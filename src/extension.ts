@@ -63,7 +63,7 @@ function compare(a: string, b: string, query: string)
 
 function hippee_ki_yay(editor: vscode.TextEditor, backward: boolean)
 {
-	const query_range = editor.document.getWordRangeAtPosition(editor.selection.active, /\S+/);
+	const query_range = editor.document.getWordRangeAtPosition(editor.selection.active, /\w+/);
 		if (!query_range) { return; }
 		const query = editor.document.getText(query_range);
 
