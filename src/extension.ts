@@ -35,7 +35,7 @@ async function modify_current_word_list(editor: vscode.TextEditor) {
 	let tail_text = editor.document.getText(tail_range);
 	let tail_words = tail_text.match(word_pattern);
 	if (tail_words) {
-		word_list_current.push(...tail_words);
+		word_list_current.push(...tail_words.reverse());
 	}
 }
 
@@ -97,7 +97,7 @@ function hippee_ki_yay(editor: vscode.TextEditor, backward: boolean)
 
 		} else { lookup_index += backward? -1:+1; }
 
-		if (lookup_index < 0) { lookup_index = matching.length-lookup_index; } // wrap around
+		if (lookup_index < 0) { lookup_index = matching.length+lookup_index; } // wrap around
 		last_choice = matching[lookup_index]
 
 		if (!last_choice)  // ran out of matches in current word list
