@@ -49,16 +49,32 @@ function did_match(candidate_word: string, query: string) {
 	return query.toLowerCase().split('').every(char => candidate_word.toLowerCase().includes(char));	
 }
 
-function compare(a: string, b: string, query: string)
-{
-	if (a.includes(query) && b.includes(query)) { return 0; }
-	if (a.includes(query)) { return -1; }
-	if (b.includes(query)) { return 1; }
+function compare(a: string, b: string, query: string): number {
+	if (a === b) return 0;
 
-	let a_rank:number = query.split('').reduce((acc, char) => a.includes(char) ? acc + 1 : acc, 0);
-	let b_rank:number = query.split('').reduce((acc, char) => b.includes(char) ? acc + 1 : acc, 0);
+	const a_lower = a.toLowerCase(), b_lower = b.toLowerCase(), query_lower = query.toLowerCase();
+	let a_rank = 0, b_rank = 0;
 
-	return a_rank > b_rank? -1 : 1;
+	if (a_lower.includes(query_lower)) a_rank += query.length;
+	if (b_lower.includes(query_lower)) b_rank += query.length;
+
+	const query_chars = new Set(query_lower);  
+	for (const char of query_chars)
+	{
+	  if (a_lower.includes(char)) a_rank++
+	  if (b_lower.includes(char)) b_rank++
+	}
+  
+	const a_words = a.split(/(?=[A-Z])|_/).map((word) => word.toLowerCase());
+	const b_words = b.split(/(?=[A-Z])|_/).map((word) => word.toLowerCase());
+  
+	for (const [i, char] of query_lower.split('').entries()) {
+	  if (a_words[i]?.[0] === char) a_rank += 2;
+  
+	  if (b_words[i]?.[0] === char) b_rank += 2;
+	}
+  
+	return a_rank === b_rank ? 0 : a_rank > b_rank ? -1 : 1;
 }
 
 function hippee_ki_yay(editor: vscode.TextEditor, backward: boolean)
