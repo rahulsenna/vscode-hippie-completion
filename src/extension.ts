@@ -64,7 +64,10 @@ function compare(a: string, b: string, query: string): number {
 	  if (a_lower.includes(char)) a_rank++
 	  if (b_lower.includes(char)) b_rank++
 	}
-  
+
+	if (a === a.toUpperCase()) a = a_lower;
+	if (b === b.toUpperCase()) b = b_lower;
+
 	const a_words = a.split(/(?=[A-Z])|_/).map((word) => word.toLowerCase());
 	const b_words = b.split(/(?=[A-Z])|_/).map((word) => word.toLowerCase());
   
