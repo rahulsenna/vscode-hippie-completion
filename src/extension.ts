@@ -35,7 +35,7 @@ async function modify_current_word_list(editor: vscode.TextEditor) {
 	let tail_text = editor.document.getText(tail_range);
 	let tail_words = tail_text.match(word_pattern);
 	if (tail_words) {
-		word_list_current.push(...tail_words.reverse());
+		word_list_current = word_list_current.concat([...new Set(tail_words)].reverse());
 	}
 }
 
