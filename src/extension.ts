@@ -3,7 +3,7 @@
 import * as vscode from 'vscode';
 
 interface Dic {
-    [key: string]: RegExpMatchArray | null
+    [key: string]: string[] | null;
 }
 
 let word_list_global: Dic = {};
@@ -14,7 +14,7 @@ let orig_query: string = '';
 let lookup_index: number = 0;
 
 let case_separator = /([A-Z])?([^A-Z]*)/g;
-let word_pattern = /(?<word>\w+)/gm;
+let word_pattern = /(?<word>\$?\w+)/gm;
 
 async function modify_global_word_list(doc: vscode.TextDocument) {
 
@@ -93,7 +93,7 @@ function hippee_ki_yay(editor: vscode.TextEditor, backward: boolean)
 			matching = [];
 
 			word_list_current.forEach(word => {
-				if (word !== query && word[0].toLowerCase() === query[0].toLowerCase() && did_match(word, query)) 
+				if (word !== query && did_match(word, query)) // [ word[0].toLowerCase() === query[0].toLowerCase() ] not matching first char anymore --- could also add or  || word[0].toLowerCase() == '$'
 				{
 					matching.push(word);
 				}
