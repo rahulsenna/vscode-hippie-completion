@@ -1,1 +1,5 @@
 postfixer-0.0.1.vsix
+out
+node_modules
+*.vsix
+package-lock.json
