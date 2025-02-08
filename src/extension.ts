@@ -79,21 +79,22 @@ function compare(a: string, b: string, query: string): number
 		let rank = 0;
 		const strLower = str.toLowerCase();
 	
-		// Exact match boost
-		if (strLower.includes(queryLower)) rank += query.length * 2;
-	
-		// Prefix match boost
-		if (strLower.startsWith(queryLower)) rank += query.length * 2;
 
+		// Prefix match boost
+		if (strLower.startsWith(queryLower)) return rank + query.length * 3;
+
+		// Exact match boost
+		if (strLower.includes(queryLower)) return rank + query.length * 2;
+	
 		// Word boundaries
 		const words = str.match(/[A-Za-z][a-z]*|[0-9]+|[A-Z](?=[a-z])/g) || [];
 		const wordLowers = words.map(word => word.toLowerCase());
 		for (const [i, char] of queryLower.split('').entries()) 
 		{
-		if (wordLowers[i]?.startsWith(char)) 
-		{
-			rank += query.length;
-		}
+			if (wordLowers[i]?.startsWith(char)) 
+			{
+				rank += query.length;
+			}
 		}
 		return rank;
 	}
