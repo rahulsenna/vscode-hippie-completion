@@ -41,44 +41,70 @@ async function modify_current_word_list(editor: vscode.TextEditor) {
 
 
 function did_match(candidate_word: string, query: string) {
-
+	// if (candidate_word[0] !== query[0])
+		// return false;
 	if (candidate_word.includes(query)) {
 		return(true);
 	}
+	if (query.length === 1)
+		return false;
 
-	return query.toLowerCase().split('').every(char => candidate_word.toLowerCase().includes(char));	
-}
+	// Word boundaries
+	const cWords = candidate_word.match(/[A-Za-z][a-z]*|[0-9]+|[A-Z](?=[a-z])/g) || [];
+	if (cWords.length <2) // Candidate now must be multi-subword word
+		return false;
+	
 
-function compare(a: string, b: string, query: string): number {
-	if (a === b) return 0;
-
-	const a_lower = a.toLowerCase(), b_lower = b.toLowerCase(), query_lower = query.toLowerCase();
-	let a_rank = 0, b_rank = 0;
-
-	if (a_lower.includes(query_lower)) a_rank += query.length;
-	if (b_lower.includes(query_lower)) b_rank += query.length;
-
-	const query_chars = new Set(query_lower);  
-	for (const char of query_chars)
+	const qWords = query.match(/[A-Za-z][a-z]*|[0-9]+|[A-Z](?=[a-z])/g) || [];
+	const qWordslower = qWords.map(word => word.toLowerCase());
+	
+	if(qWordslower.every(subword => candidate_word.toLowerCase().includes(subword)))
 	{
-	  if (a_lower.includes(char)) a_rank++
-	  if (b_lower.includes(char)) b_rank++
+		return true;
 	}
 
-	if (a === a.toUpperCase()) a = a_lower;
-	if (b === b.toUpperCase()) b = b_lower;
-
-	const a_words = a.split(/(?=[A-Z])|_/).map((word) => word.toLowerCase());
-	const b_words = b.split(/(?=[A-Z])|_/).map((word) => word.toLowerCase());
-  
-	for (const [i, char] of query_lower.split('').entries()) {
-	  if (a_words[i]?.[0] === char) a_rank += 2;
-  
-	  if (b_words[i]?.[0] === char) b_rank += 2;
-	}
-  
-	return a_rank === b_rank ? 0 : a_rank > b_rank ? -1 : 1;
+	return query.toLowerCase().split('').every(char => candidate_word.toLowerCase().includes(char))
 }
+
+
+function compare(a: string, b: string, query: string): number 
+{
+	if (a === b) return 0;
+	
+	const queryLower = query.toLowerCase();
+	
+	function calculateRank(str: string): number 
+	{
+		str = str.replace(/^\$/, ''); // remove $ sign (php)
+		let rank = 0;
+		const strLower = str.toLowerCase();
+	
+		// Exact match boost
+		if (strLower.includes(queryLower)) rank += query.length * 2;
+	
+		// Prefix match boost
+		if (strLower.startsWith(queryLower)) rank += query.length * 2;
+
+		// Word boundaries
+		const words = str.match(/[A-Za-z][a-z]*|[0-9]+|[A-Z](?=[a-z])/g) || [];
+		const wordLowers = words.map(word => word.toLowerCase());
+		for (const [i, char] of queryLower.split('').entries()) 
+		{
+		if (wordLowers[i]?.startsWith(char)) 
+		{
+			rank += query.length;
+		}
+		}
+		return rank;
+	}
+	
+	// Calculate ranks for both strings
+	const aRank = calculateRank(a);
+	const bRank = calculateRank(b);
+	
+	// Compare ranks
+	return bRank - aRank;
+	}
 
 function hippee_ki_yay(editor: vscode.TextEditor, backward: boolean)
 {
@@ -164,6 +190,7 @@ export function activate(context: vscode.ExtensionContext) {
 	
 	vscode.workspace.onDidOpenTextDocument((doc) => {
 		modify_global_word_list(doc);
+		console.log("onDidOpenTextDocument: ", doc);
 	});
 	vscode.workspace.textDocuments.forEach((doc) => {
 		modify_global_word_list(doc);
