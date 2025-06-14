@@ -7,7 +7,9 @@ interface Dic {
 }
 
 let word_list_global: Dic = {};
-let word_list_current: string[] = [];
+// let word_list_current: string[] = [];
+let head_words: string[] = [];
+let tail_words: string[] = [];
 let matching: string[] = [];
 let last_choice: string = '';
 let orig_query: string = '';
@@ -27,23 +29,23 @@ async function modify_current_word_list(editor: vscode.TextEditor) {
 	let cursor = editor.selection.active;
 	let head_range = new vscode.Range(new vscode.Position(0, 0), cursor);
 	let head_text = editor.document.getText(head_range);
-	let head_words = head_text.match(word_pattern)?.reverse();
-	word_list_current = [...new Set(head_words)];
+	head_words = head_text.match(word_pattern)!.reverse();
+	head_words = [...new Set(head_words)];
 
 	var last_line = new vscode.Position(editor.document.lineCount - 1, 100);
 	let tail_range = new vscode.Range(cursor, last_line);
 	let tail_text = editor.document.getText(tail_range);
-	let tail_words = tail_text.match(word_pattern);
-	if (tail_words) {
-		word_list_current = word_list_current.concat([...new Set(tail_words)].reverse());
-	}
+	tail_words = tail_text.match(word_pattern)!;
+	tail_words = [...new Set(tail_words)];
 }
 
 
 function did_match(candidate_word: string, query: string) {
 	// if (candidate_word[0] !== query[0])
 		// return false;
-	if (candidate_word.includes(query)) {
+	const candidateWordLower = candidate_word.toLowerCase()
+	const queryLower = query.toLowerCase()
+	if (candidateWordLower.includes(queryLower)) {
 		return(true);
 	}
 	if (query.length === 1)
@@ -119,12 +121,26 @@ function hippee_ki_yay(editor: vscode.TextEditor, backward: boolean)
 			lookup_index = backward? -1:0; 
 			matching = [];
 
-			word_list_current.forEach(word => {
+			head_words.forEach(word => {
 				if (word !== query && did_match(word, query)) // [ word[0].toLowerCase() === query[0].toLowerCase() ] not matching first char anymore --- could also add or  || word[0].toLowerCase() == '$'
 				{
 					matching.push(word);
 				}
 			});
+
+			matching.sort((a, b) => compare(a, b, query)); // sort by rank
+			
+			let tail_matching: string[] = [];
+			tail_words.forEach(word => {
+				if (word !== query && did_match(word, query)) // [ word[0].toLowerCase() === query[0].toLowerCase() ] not matching first char anymore --- could also add or  || word[0].toLowerCase() == '$'
+				{
+					tail_matching.push(word);
+				}
+			});
+			tail_matching.sort((a, b) => compare(a, b, query)); // sort by rank
+			tail_matching.reverse()
+			matching = matching.concat(tail_matching);
+
 			if (matching.length === 0) {
 				for (const w_list of Object.values(word_list_global)) {
 					if (!w_list) { continue; }
@@ -138,8 +154,6 @@ function hippee_ki_yay(editor: vscode.TextEditor, backward: boolean)
 				}
 			}
 			if (matching.length === 0) { return; }
-
-			matching.sort((a, b) => compare(a, b, query)); // sort by rank
 
 		} else { lookup_index += backward? -1:+1; }
 
