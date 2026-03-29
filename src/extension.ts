@@ -15,13 +15,13 @@ let last_choice: string = '';
 let orig_query: string = '';
 let lookup_index: number = 0;
 
-let case_separator = /([A-Z])?([^A-Z]*)/g;
+// let case_separator = /([A-Z])?([^A-Z]*)/g;
 let word_pattern = /(?<word>\$?\w+)/gm;
 
 async function modify_global_word_list(doc: vscode.TextDocument) {
 
 	let words =  doc.getText().match(word_pattern);
-	word_list_global[doc.fileName] = [...new Set(words)];		
+  word_list_global[doc.fileName] = [...new Set(words ?? [])];
 }
 
 async function modify_current_word_list(editor: vscode.TextEditor) {
@@ -29,13 +29,13 @@ async function modify_current_word_list(editor: vscode.TextEditor) {
 	let cursor = editor.selection.active;
 	let head_range = new vscode.Range(new vscode.Position(0, 0), cursor);
 	let head_text = editor.document.getText(head_range);
-	head_words = head_text.match(word_pattern)!.reverse();
+  head_words = (head_text.match(word_pattern) ?? []).reverse();
 	head_words = [...new Set(head_words)];
 
 	var last_line = new vscode.Position(editor.document.lineCount - 1, 100);
 	let tail_range = new vscode.Range(cursor, last_line);
 	let tail_text = editor.document.getText(tail_range);
-	tail_words = tail_text.match(word_pattern)!;
+  tail_words = tail_text.match(word_pattern) ?? [];
 	tail_words = [...new Set(tail_words)];
 }
 
@@ -89,7 +89,8 @@ function compare(a: string, b: string, query: string): number
 		if (strLower.includes(queryLower)) return rank + query.length * 2;
 	
 		// Word boundaries
-		const words = str.match(/[A-Za-z][a-z]*|[0-9]+|[A-Z](?=[a-z])/g) || [];
+		// const words = str.match(/[A-Za-z][a-z]*|[0-9]+|[A-Z](?=[a-z])/g) || [];
+		const words = str.split(/[_\s]+/).flatMap(word => word.match(/[A-Z]*[a-z]+|[A-Z]+(?=[A-Z][a-z]|\b)|[A-Z]+/g) || []);
 		const wordLowers = words.map(word => word.toLowerCase());
 		for (const [i, char] of queryLower.split('').entries()) 
 		{
@@ -158,6 +159,7 @@ function hippee_ki_yay(editor: vscode.TextEditor, backward: boolean)
 		} else { lookup_index += backward? -1:+1; }
 
 		if (lookup_index < 0) { lookup_index = matching.length+lookup_index; } // wrap around
+    if (lookup_index >= matching.length) { lookup_index = 0; }
 		last_choice = matching[lookup_index]
 
 		if (!last_choice)  // ran out of matches in current word list
@@ -172,45 +174,41 @@ function hippee_ki_yay(editor: vscode.TextEditor, backward: boolean)
 		editor.selections.forEach(selection => {// @ts-ignore
 			const range = editor.document.getWordRangeAtPosition(selection.end);
 			if (!range) { return; }
-			edit.delete(range);
-			edit.insert(range.end, last_choice);
+			edit.replace(range, last_choice);
 		});
 	});
 }
 
+function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
+  let timer: NodeJS.Timeout;
+  return ((...args: unknown[]) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  }) as T;
+}
 
 export function activate(context: vscode.ExtensionContext) {
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand('hippie-completion.next', () => {
+      vscode.window.activeTextEditor && hippee_ki_yay(vscode.window.activeTextEditor, false);
+    }),
+    vscode.commands.registerCommand('hippie-completion.prev', () => {
+      vscode.window.activeTextEditor && hippee_ki_yay(vscode.window.activeTextEditor, true);
+    }),
+    vscode.workspace.onDidChangeTextDocument(
+      debounce(() => {
+        const editor = vscode.window.activeTextEditor;
+        if (editor) { modify_current_word_list(editor); }
+      }, 500)
+    ),
+    vscode.workspace.onDidOpenTextDocument(modify_global_word_list),
+    vscode.workspace.onDidCloseTextDocument((doc) => {
+      delete word_list_global[doc.fileName];
+    }),
+  );
 
-	let next = vscode.commands.registerCommand('hippie-completion.next', () => {
-		let editor = vscode.window.activeTextEditor;
-		if (!editor) { return; }
-		hippee_ki_yay(editor, false);
-	});
-	context.subscriptions.push(next);
-
-
-	let prev = vscode.commands.registerCommand('hippie-completion.prev', () => {
-		let editor = vscode.window.activeTextEditor;
-		if (!editor) { return; }
-		hippee_ki_yay(editor, true);
-	});
-	context.subscriptions.push(prev);
-
-	vscode.workspace.onDidChangeTextDocument((e) => {
-		let editor = vscode.window.activeTextEditor;
-		if (!editor) { return; }
-		modify_current_word_list(editor);
-	});
-	
-	vscode.workspace.onDidOpenTextDocument((doc) => {
-		modify_global_word_list(doc);
-		console.log("onDidOpenTextDocument: ", doc);
-	});
-	vscode.workspace.textDocuments.forEach((doc) => {
-		modify_global_word_list(doc);
-	});
-
+  vscode.workspace.textDocuments.forEach(modify_global_word_list);
 }
 
 // this method is called when your extension is deactivated
